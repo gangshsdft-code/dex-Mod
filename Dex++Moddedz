@@ -12477,7 +12477,7 @@ local function main()
 		end
 
 		-- Displays the correct ValueBox for the ValueType, and sets it to the prop value
-		if typeName == "bool" or typeName == "PhysicalProperties" then
+		if typeName == "bool" or typeNacame == "PhysicalProperties" then
 			valueBox.Visible = false
 			checkbox.Visible = true
 			soundPreview.Visible = false
@@ -12504,17 +12504,22 @@ local function main()
 				elseif typeData.Category == "Enum" then
 					valueBox.Text = propVal.Name
 				elseif Properties.RoundableTypes[typeName] and Settings.Properties.NumberRounding then
+					local decimalPlaces = math.clamp(math.floor(tonumber(Settings.Properties.NumberRounding) or 3), 0, 9)
 					local rawStr = Properties.ValueToString(prop,propVal)
-					valueBox.Text = rawStr:gsub("-?%d+%.?%d*[eE]?[+-]?%d*",function(num)
+					valueBox.Text = rawStr:gsub("-?%d+%.?%d*[eE]?[+-]?%d*", function(num)
 						local value = tonumber(num)
+						-- A genuine NaN/infinite value has no accurate decimal representation.
+						-- Leave it unchanged; finite values, including very large coordinates,
+						-- are always shown in ordinary fixed-point notation.
 						if not value or value ~= value or value == math.huge or value == -math.huge then
 							return num
 						end
 
-						-- Fixed-point formatting overflows for large world coordinates.
-						-- General formatting keeps those finite values readable as scientific notation.
-						local rounded = ("%."..Settings.Properties.NumberRounding.."g"):format(value)
-						return rounded == "nan" and num or rounded
+						local rounded = ("%."..decimalPlaces.."f"):format(value)
+						if decimalPlaces > 0 then
+							rounded = rounded:gsub("0+$", ""):gsub("%.$", "")
+						end
+						return rounded == "-0" and "0" or rounded
 					end)
 				else
 					valueBox.Text = Properties.ValueToString(prop,propVal)
